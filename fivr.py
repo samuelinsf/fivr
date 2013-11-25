@@ -15,27 +15,11 @@ import os.path
 import inspect
 import syslog
 
-#
-# Configuration
-#
-#tree_path='/home/sam/src/fivr/demo'
 tree_path=sys.argv[1]
-
-#
-# from /etc/asterisk/extensions.conf
-# exten => s,n,DeadAGI(/home/sam/src/fivr/fivr.py|/home/sam/src/fivr/demo)
-#
 max_repeat=3
 
-#
-# TODO:
-# restrict max call time
-# buffer extra numbers at entry
-# catch asterisk.agi.AGIAppError and log call hangup
-#
-
 class fivr:
-    "A Free Interactive Voice Response class"
+    "A Free Interactive Voice Response system"
 
     def __init__(self, location, max_repeat=5, loglevel=9):
         "Initialize agi interface"
@@ -50,17 +34,25 @@ class fivr:
         
 
     def ask(self, dir, time, maxdigits=10, chances=3):
-        """Play prompts in dir, wait for """
+        """Play prompts in dir, wait for user to press keys"""
         result=""
         play_return_clip = (dir in self._visited)
         playlist = self.get_playlist(dir, play_return_clip)
+        start_time = time.time()
         for clip in playlist:
             syslog.syslog("play-prompt-start: %s" % clip)
             escaped_name = re.sub(r'([ \t"\\])', lambda x: '\x5c' +x.group(1), clip)
             result=self._agi.get_data(escaped_name, timeout=5, max_digits=maxdigits)
             syslog.syslog("play-prompt-finish: %s" % clip)
-            if result:
+            if result != '':
                 break
+            elif (time.time() - start_time) < (timeout / 1000.0):
+                # user pressed pound key inside timeout window, restart clip playback
+                syslog.syslog("play-prompt-restart-after-hash: %s" % clip)
+                result=self._agi.get_data(escaped_name, timeout=5, max_digits=maxdigits)
+                syslog.syslog("play-prompt-finish: %s" % clip)
+                if result:
+                    break
         result = self.get_rest_digits(result, time)
         self.log('got:' + result)
         return result
@@ -115,8 +107,7 @@ class fivr:
                     #self.log("found return clip %s" % clip )
                     playlist.append(os.path.join(path,clip))
             if playlist:
-                 return playlist
-
+                return playlist
 
         for f in listing:
             m = re.match("^(clip.*)\.[^.]+$", f)
@@ -186,7 +177,8 @@ class fivr:
             current_dir = self._tree_path + "/" + "/".join(self._here) + "/"
             self.log("cur dir: " + current_dir )
             digits=''
-            digits=self.ask(current_dir, 2000, self.digit_count(current_dir))
+            digit_wait_ms=2000
+            digits=self.ask(current_dir, digit_wait_ms, self.digit_count(current_dir))
             times_played = times_played + 1
             if self.has_no_subdirs(current_dir):
                 if (len(self._here) == 0):
