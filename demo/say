@@ -1,0 +1,16 @@
+#!/usr/bin/perl -w
+
+# this script requires festival, and normalize-audio .. so first do:
+# sudo apt-get install festival normalize-audio
+
+$s = join(' ', @ARGV);
+print $s . "\n";
+$f = join('-', @ARGV);
+
+open( P, "|text2wave -F 8000 -o clip-$f.wav");
+
+print P $s;
+
+close P;
+
+system("normalize-audio clip-$f.wav");
