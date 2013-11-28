@@ -175,6 +175,7 @@ class fivr:
         self.play(top_dir + 'welcome')
         while (not self._line_dead):
             current_dir = self._tree_path + "/" + "/".join(self._here) + "/"
+            current_dir = os.path.join(self._tree_path, *self._here)
             self.log("cur dir: " + current_dir )
             digits=''
             digit_wait_ms=2000
