@@ -28,6 +28,7 @@ import datetime
 import os.path
 import inspect
 import syslog
+import time
 
 tree_path=sys.argv[1]
 max_repeat=3
@@ -47,7 +48,7 @@ class fivr:
         syslog.openlog('fivr[%s]' % self._agi.env['agi_uniqueid'], 0, syslog.LOG_LOCAL1)
         
 
-    def ask(self, dir, time, maxdigits=10, chances=3):
+    def ask(self, dir, wait_time, maxdigits=10, chances=3):
         """Play prompts in dir, wait for user to press keys"""
         result=""
         play_return_clip = (dir in self._visited)
@@ -60,14 +61,14 @@ class fivr:
             syslog.syslog("play-prompt-finish: %s" % clip)
             if result != '':
                 break
-            elif (time.time() - start_time) < (timeout / 1000.0):
+            elif (time.time() - start_time) < (wait_time / 1000.0):
                 # user pressed pound key inside timeout window, restart clip playback
                 syslog.syslog("play-prompt-restart-after-hash: %s" % clip)
                 result=self._agi.get_data(escaped_name, timeout=5, max_digits=maxdigits)
                 syslog.syslog("play-prompt-finish: %s" % clip)
                 if result:
                     break
-        result = self.get_rest_digits(result, time)
+        result = self.get_rest_digits(result, wait_time)
         self.log('got:' + result)
         return result
 
@@ -76,6 +77,8 @@ class fivr:
         got = already_entered
         while 1:
             result=self._agi.wait_for_digit(timeout)
+            if result == '#':
+                break
             got = got + result
             if result == '':
                 break
@@ -189,7 +192,6 @@ class fivr:
         self.play(top_dir + 'welcome')
         while (not self._line_dead):
             current_dir = self._tree_path + "/" + "/".join(self._here) + "/"
-            current_dir = os.path.join(self._tree_path, *self._here)
             self.log("cur dir: " + current_dir )
             digits=''
             digit_wait_ms=2000
