@@ -2,7 +2,8 @@
 #
 # This script presents an interactive telephone information tree.
 #
-#
+# Made available to you under the terms of the 
+# GNU GENERAL PUBLIC LICENSE Version 3
 
 import asterisk.agi
 
