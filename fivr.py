@@ -200,10 +200,11 @@ class fivr:
             if self.has_no_subdirs(current_dir):
                 if (len(self._here) == 0):
                     self.hangup('No available options.')
+                # treat input in leaf folders like menu selections at parent level
                 self._here.pop()
                 self._visited[self._tree_path + "/" + "/".join(self._here) + "/"] = True
                 times_played=1
-                continue
+                current_dir = self._tree_path + "/" + "/".join(self._here) + "/"
             if (digits == ''):
                 if (times_played > self._max_repeat):
                     self.hangup("Max repeat reached: %d" % self._max_repeat)
